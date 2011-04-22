@@ -1,0 +1,154 @@
+#!/usr/bin/php
+<?php
+
+include 'lib/Phunk.php';
+
+class PhunkRunner {
+	/**
+	 * @var string
+	 */
+	protected $suitePath;
+
+	/**
+	 * @var string
+	 */
+	protected $suiteName;
+
+	/**
+	 * @param string $suitePath
+	 */
+	public function __construct($suitePath) {
+		$this->suitePath = $suitePath;
+		$this->suiteName = pathinfo($this->suitePath, PATHINFO_FILENAME);
+	}
+
+	/**
+	 * @return void
+	 */
+	public function run() {
+		// Handle cache
+		require_once 'lib/phunk/cache/Disk.php';
+		phunk_cache_Disk::setBasePath(BASE . '/data/cache');
+
+		// Data store
+		require_once 'lib/phunk/DataStore.php';
+		$store = phunk_DataStore::instance();
+
+		// Handle suite
+		require_once $this->suitePath;
+		$rSuite = new ReflectionMethod($this->suiteName, 'suite');
+		$rSuite->invoke(NULL, array());
+		$rChecks = new ReflectionMethod($this->suiteName, 'getChecks');;
+		$checks = $rChecks->invoke(NULL, array());
+
+		// Handle dependency paths
+		$dependencyPaths = array();
+		foreach($checks as $check) {
+			/** @var $check phunk_check_Abstract */
+			$dependencyPaths = array_merge($dependencyPaths, array_keys($check->getDependencyPaths()));
+		}
+
+		// Handle check paths
+		$checkPaths = array();
+		foreach($checks as $check) {
+			/** @var $check phunk_check_Abstract */
+			$checkPaths = array_merge($checkPaths, array_keys($check->getCheckPaths()));
+		}
+
+		// Explode the paths
+		$checkFiles = $this->explodePaths(array_unique($checkPaths));
+		$dependencyFiles = $this->explodePaths(array_unique($dependencyPaths));
+
+		// Run the checks
+		$phunk = new Phunk();
+		$result = $phunk->process($checks, $checkFiles, $dependencyFiles);
+
+		// Grab + update the run count
+		$runs = $store->getValue('runs');
+		if($runs) $runs++;
+		else $runs = 1;
+		$store->setValue('runs', $runs);
+
+		// Garbage collection
+		//if(($runs % 50) === 0) $this->garbageCollectDiskCache(array_merge($checkFiles, $dependencyFiles));
+
+		// Exit with the relevant code
+		exit($result ? 1 : 0);
+	}
+
+	/**
+	 * TODO: this will GC based on current scenario - we need context based on the suite, or some other
+	 * form of information.
+	 *
+	 * @param array $paths
+	 * @return void
+	 */
+	protected function garbageCollectDiskCache(array $paths) {
+		if(strlen(phunk_cache_Disk::getBasePath()) === 0) throw new Exception();
+		$cachePath = phunk_cache_Disk::getBasePath() . '/parsers';
+		$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($cachePath), RecursiveIteratorIterator::SELF_FIRST);
+
+		/** @var $file DirectoryIterator */
+		foreach($iterator as $file) {
+			if($file->isFile() && strtolower(substr($file->getPathname(), -6)) === '.cache') {
+				$realPath = substr($file->getPathname(), strlen($cachePath), -6);
+				if(!isset($paths[$realPath])) unlink($file->getPathname());
+			}
+		}
+	}
+
+	/**
+	 * @param array $paths
+	 * @param array $results
+	 * @return array
+	 */
+	protected function explodePaths(array $paths = array()) {
+		$results = array();
+
+		foreach($paths as $path) {
+			if(is_dir($path)) {
+				$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path), RecursiveIteratorIterator::SELF_FIRST);
+
+				/** @var $file DirectoryIterator */
+				foreach($iterator as $file) {
+					if($file->isFile() && strtolower(substr($file->getPathname(), -4)) === '.php') {
+						$results[$file->getPathname()] = true;
+					}
+				}
+			}
+			else if(is_file($path) && substr($path, -4) === '.php') {
+				$results[realpath($path)] = true;
+			}
+		}
+
+		return $results;
+	}
+
+	/**
+	 * @static
+	 * @param array $args
+	 * @return void
+	 */
+	public static function main(array $args = array()) {
+		if(count($args) !== 2) {
+			echo 'Syntax: ' . $args[0] . ' suite-path.php' . PHP_EOL;
+			exit(1);
+		}
+
+		$suitePath = $args[1];
+		if(strtolower(substr($suitePath, -4)) !== '.php') $suitePath .= '.php';
+		$suitePath = realpath($suitePath);
+
+		if(!is_file($suitePath) || !is_readable($suitePath)) {
+			echo 'Error: suite path specified cannot be found or read' . PHP_EOL;
+			exit(1);
+		}
+
+		$runner = new self($suitePath);
+		$runner->run();
+	}
+}
+
+set_include_path(get_include_path() . PATH_SEPARATOR . 'lib/');
+define('BASE', dirname(__FILE__));
+PhunkRunner::main($argv);
