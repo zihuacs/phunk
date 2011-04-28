@@ -1,9 +1,7 @@
 #!/usr/bin/php
 <?php
 
-include 'lib/Phunk.php';
-
-class PhunkRunner {
+class PhunkDriver {
 	/**
 	 * @var string
 	 */
@@ -27,11 +25,11 @@ class PhunkRunner {
 	 */
 	public function run() {
 		// Handle cache
-		require_once 'lib/phunk/cache/Disk.php';
-		phunk_cache_Disk::setBasePath(BASE . '/data/cache');
+		require_once 'phunk/cache/Disk.php';
+		phunk_cache_Disk::setBasePath(realpath(sys_get_temp_dir()). '/phunk/cache');
 
 		// Data store
-		require_once 'lib/phunk/DataStore.php';
+		require_once 'phunk/DataStore.php';
 		$store = phunk_DataStore::instance();
 
 		// Handle suite
@@ -60,6 +58,7 @@ class PhunkRunner {
 		$dependencyFiles = $this->explodePaths(array_unique($dependencyPaths));
 
 		// Run the checks
+		require_once 'Phunk.php';
 		$phunk = new Phunk();
 		$result = $phunk->process($checks, $checkFiles, $dependencyFiles);
 
@@ -78,7 +77,7 @@ class PhunkRunner {
 
 	/**
 	 * TODO: this will GC based on current scenario - we need context based on the suite, or some other
-	 * form of information.
+	 * form of information - sha1 of the suite path under the cache dir?
 	 *
 	 * @param array $paths
 	 * @return void
@@ -144,11 +143,11 @@ class PhunkRunner {
 			exit(1);
 		}
 
-		$runner = new self($suitePath);
-		$runner->run();
+		$driver = new self($suitePath);
+		$driver->run();
 	}
 }
 
-set_include_path(get_include_path() . PATH_SEPARATOR . 'lib/');
 define('BASE', dirname(__FILE__));
-PhunkRunner::main($argv);
+set_include_path(get_include_path() . PATH_SEPARATOR . BASE . '/lib/');
+PhunkDriver::main($argv);
