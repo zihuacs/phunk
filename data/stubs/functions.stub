@@ -5737,6 +5737,10 @@ xdiff_string_merge3
 xdiff_string_patch
 xdiff_string_patch_binary
 xdiff_string_rabdiff
+xhprof_disable
+xhprof_enable
+xhprof_sample_disable
+xhprof_sample_enable
 xmldoc
 xmldocfile
 xml_error_string
