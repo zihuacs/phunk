@@ -8,10 +8,11 @@ Checks
 ------
 
 phunk perform analysis on a number of different potential problems:
+
 * undefined function / method / class usage: phunk searches for usages of functions / methods / classes which it cannot
-   find declarations for and are not native to PHP,
+  find declarations for and are not native to PHP,
 * blacklisted function / method / class usage: phunk allows you to specify lists of functions / methods / classes
-   which you do not permit usage of in your codebase,
+  which you do not permit usage of in your codebase,
 * non-code portions: phunk can search for non-php portions of text in areas they don't belong - it can scan all your
   classes for any text laying outside of the PHP tags.
 
@@ -61,6 +62,7 @@ Examples
 --------
 
 Some example suites exist for your perusal under the "examples" directory. A brief explanation of each:
+
 * example 0: this performs checks for undefined functions / methods / classes for files under the "code" directory -
   view the "foo.php" file to see the various issues at hand.
 * example 1: this performs checks for blacklisted functions / methods / classes for files under the "code" directory -
