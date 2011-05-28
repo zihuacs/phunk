@@ -40,7 +40,7 @@ class Phunk {
 	public function process(array $checks, array $checkFiles, array $dependencyFiles) {
 		$this->checks = $checks;
 		$store = phunk_DataStore::instance();
-		$hasChecks = count($checks) || count($checkFiles) + count($dependencyFiles) > 0;
+		$hasChecks = count($checks) && count($checkFiles) + count($dependencyFiles) > 0;
 
 		// Begin.
 		phunk_Logger::write('phunk v' . self::VERSION . PHP_EOL);
