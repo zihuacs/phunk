@@ -33,9 +33,19 @@ class PhunkDriver {
 		$store = phunk_DataStore::instance();
 
 		// Handle suite
+		require_once 'phunk/Suite.php';
 		require_once $this->suitePath;
+		if(!class_exists($this->suiteName)) throw new InvalidArgumentException('Suite does not contain ' . $this->suiteName . ' class');
+		$rClass = new ReflectionClass($this->suiteName);
+		if(!$rClass->isSubclassOf('phunk_Suite')) throw new InvalidArgumentException('Suite must subclass "phunk_Suite"');
+		
+		// Invoke the suite method
+		if(!$rClass->hasMethod('suite')) throw new InvalidArgumentException('Suite class does not contain a "suite" method');
 		$rSuite = new ReflectionMethod($this->suiteName, 'suite');
 		$rSuite->invoke(NULL, array());
+
+		// Fetch the generated checks
+		if(!$rClass->hasMethod('getChecks')) throw new InvalidArgumentException('Suite class does not contain a "getChecks" method');
 		$rChecks = new ReflectionMethod($this->suiteName, 'getChecks');;
 		$checks = $rChecks->invoke(NULL, array());
 
@@ -143,8 +153,14 @@ class PhunkDriver {
 			exit(1);
 		}
 
-		$driver = new self($suitePath);
-		$driver->run();
+		try {
+			$driver = new self($suitePath);
+			$driver->run();
+		}
+		catch(Exception $e) {
+			echo PHP_EOL . 'ERROR: An unhandled problem has occurred: "' . $e->getMessage() . '". Exiting.' . PHP_EOL;
+			exit(1);
+		}
 	}
 }
 

@@ -4,6 +4,7 @@ require_once 'phunk/check/exception/CheckFailException.php';
 require_once 'phunk/Tokenizer.php';
 require_once 'phunk/Logger.php';
 require_once 'phunk/parser/Runner.php';
+require_once 'phunk/parser/Abstract.php';
 
 /**
  *
@@ -39,9 +40,13 @@ class Phunk {
 	public function process(array $checks, array $checkFiles, array $dependencyFiles) {
 		$this->checks = $checks;
 		$store = phunk_DataStore::instance();
+		$hasChecks = count($checks) || count($checkFiles) + count($dependencyFiles) > 0;
 
 		// Begin.
 		phunk_Logger::write('phunk v' . self::VERSION . PHP_EOL);
+
+		// Warn if there is nothing to check		
+		if(!$hasChecks) phunk_Logger::write('WARNING: no checks to perform.' . PHP_EOL);
 
 		// Check the disk cache availability
 		self::$cachePathPrefix = '/parsers/';
@@ -71,7 +76,7 @@ class Phunk {
 			$this->doPostProcess($check);
 		}
 
-		phunk_Logger::write(PHP_EOL);
+		if($hasChecks) phunk_Logger::write(PHP_EOL);
 
 		// Check results
 		$hasErrors = isset($this->problems[phunk_check_exception_CheckFailException::FAIL_ERROR]) && count($this->problems[phunk_check_exception_CheckFailException::FAIL_ERROR]) > 0;
